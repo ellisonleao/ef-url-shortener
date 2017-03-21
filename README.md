@@ -233,6 +233,29 @@ Other responses:
 
 - `401` - Unauthorized request
 
+## GET /s/:code
+
+**Short url redirect**
+
+Endpoint for the shorl url redirect. Ideally a new location would be added on a web server to this endpoint to handle the short url hostname.
+
+Example request:
+
+```
+curl http://host/code
+```
+
+Example response:
+
+```
+HTTP/1.0 301 Moved Permanently
+Date: GMT Datatime
+Server: Some web server
+content-length: 0
+content-type: application/json
+location: http://some.longurl
+```
+
 
 ## Improvements Roadmap
 
@@ -241,4 +264,4 @@ Several things could be added as improvements:
 - **Pagination** - List of urls can have pagination for better response time and scalability.
 - **OAuth2 for authentication** - using a client secret with a client id the user could generate a token for requests. That token should be invalidated at some point. Some social auth could be added too
 - **Caching** - Adding a caching layer on top of the api will improve the response time. Varnish cache could be an option.
-- **Use Nginx** - Nginx could be used for web server, load balancer and reverse proxy to configure the short url host.
+- **Nginx for web server** - Nginx could be used for web server, load balancer and reverse proxy to configure the short url host.
