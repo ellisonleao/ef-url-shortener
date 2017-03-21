@@ -69,8 +69,7 @@ api = hug.API(__name__)
 api.http.add_middleware(ENVMiddleware())
 
 
-@hug.get('/api/short', example='?long_url=http://www.google.com',
-         requires=api_key_auth)
+@hug.get('/api/short', requires=api_key_auth)
 def short_url(request, response):
     """
     Handles url shortening
@@ -117,8 +116,7 @@ def short_url(request, response):
     return {'short_url': short_url}
 
 
-@hug.get('/api/expand', example='?short_url=http://host/s/code',
-         requires=api_key_auth)
+@hug.get('/api/expand', requires=api_key_auth)
 def expand_url(request, response):
     """
     Handle url expanding. Returns limited url info
@@ -163,7 +161,7 @@ def get_user_urls(request, response):
 
 
 @hug.post('/api/user')
-def user(body, request, response):
+def create_user(body, request, response):
     """
     Creates a new user
     """
