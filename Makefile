@@ -7,7 +7,7 @@ run:
 	MONGODB_URI=${MONGODB_URI} HOST=${HOST} hug -f api.py -p ${PORT}
 
 run-prod:
-	MONGODB_URI=${MONGODB_URI} gunicorn -b 0.0.0.0:${PORT} -w 3 api:__hug_wsgi__
+	MONGODB_URI=${MONGODB_URI} HOST=${HOST} gunicorn -b 0.0.0.0:${PORT} -w 3 api:__hug_wsgi__
 
 test:
 	py.test --cov-report term-missing --cov .
