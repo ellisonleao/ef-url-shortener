@@ -178,6 +178,12 @@ def create_user(body, request, response):
         response.status = HTTP_400
         return {'error': 'Email not valid'}
 
+    # check if user exists
+    exists = db.find_one_user({'email': email})
+    if exists:
+        response.status = HTTP_409
+        return {'error': 'User already exists'}
+
     user = {
         'email': email,
         'api_key': gen_api_key(email),
