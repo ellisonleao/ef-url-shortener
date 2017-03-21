@@ -27,7 +27,7 @@ cd ef-url-shortener
 pip install -r requirements.txt
 ```
 
-## Running:
+## Running locally:
 
 Some env vars are required for the service:
 
@@ -43,7 +43,7 @@ To run the project, execute the following:
 
 ```bash
 export HOST="http://somehost"
-export MONGO_URL="mongodb://mongourl"
+export MONGO_URL="mongodb://mongourl/dbname"
 
 make run
 ```
@@ -55,6 +55,11 @@ make run
 ```
 
 which will default the `HOST` to `http://ef.me` and `MONGO_URL` to `mongodb://localhost:27017/ef_shortener` and
+
+## Deploying
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
 
 ## Endpoints:
 

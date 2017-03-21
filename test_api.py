@@ -105,8 +105,3 @@ def test_env_middleware():
     req = fake_request(context={})
     with pytest.raises(Exception):
         e.process_request(req, fake_response)
-
-
-"""
-DB test
-"""

@@ -4,6 +4,7 @@ import os
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.uri_parser import parse_uri
 
 
 class DB:
@@ -11,11 +12,11 @@ class DB:
     Small wrapper for mongodb collection calls
     """
     def __init__(self, **kwargs):
-        mongo_url = os.environ.get('MONGO_URL')
-        if not mongo_url:
-            raise Exception('MONGO_URL missing')
+        mongo_uri = os.environ.get('MONGODB_URI')
+        parsed_host = parse_uri(mongo_uri)
 
-        self.conn = MongoClient(mongo_url)
+        self.conn = MongoClient(mongo_uri)
+        self.database = parsed_host['database']
 
     @staticmethod
     def sanitize_query(query):
@@ -39,14 +40,14 @@ class DB:
         if not query:
             return None
 
-        res = self.conn.ef_shortener.urls.find_one(query)
+        res = self.conn[self.database].urls.find_one(query)
         return res
 
     def find_urls(self, user_id):
         """
         Returns a list of user urls
         """
-        return self.conn.ef_shortener.urls.find({'created_by': ObjectId(user_id)})
+        return self.conn[self.database].urls.find({'created_by': ObjectId(user_id)})
 
     def insert_url(self, query):
         """
@@ -56,13 +57,13 @@ class DB:
         if not query:
             return None
 
-        return self.conn.ef_shortener.urls.insert_one(query)
+        return self.conn[self.database].urls.insert_one(query)
 
     def update_url(self, query, change):
         """
         wraps collection.update for urls collection
         """
-        return self.conn.ef_shortener.urls.update(query, change)
+        return self.conn[self.database].urls.update(query, change)
 
     def insert_user(self, query):
         """
@@ -72,7 +73,7 @@ class DB:
         if not query:
             return None
 
-        return self.conn.ef_shortener.users.insert_one(query)
+        return self.conn[self.database].users.insert_one(query)
 
     def find_one_user(self, query):
         """
@@ -82,7 +83,7 @@ class DB:
         if not query:
             return None
 
-        return self.conn.ef_shortener.users.find_one(query)
+        return self.conn[self.database].users.find_one(query)
 
     def generate_url_code(self, host):
         """
@@ -102,7 +103,6 @@ class DB:
                            range(max_code_len))
             exists = self.find_one_url({'code': code})
         return code
-
 
     def close(self):
         """
