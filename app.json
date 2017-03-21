@@ -2,5 +2,11 @@
   "name": "EF URL shortener",
   "description": "URL Shortening API service",
   "repository": "https://github.com/ellisonleao/ef-url-shortener",
-  "keywords": ["python", "hug", "api"]
+  "keywords": ["python", "hug", "api"],
+  "env": {
+    "HOST": {
+        "value": "http://ef.me",
+        "description": "Short URL Host"
+    }
+  }
 }
