@@ -56,6 +56,14 @@ make run
 
 which will default the `HOST` to `http://ef.me` and `MONGO_URL` to `mongodb://localhost:27017/ef_shortener` and
 
+## Testing
+
+In order to test the project, create a `MONGODB_URI_TEST` env variable pointing to a test mongo db, then type:
+
+```
+make test
+```
+
 ## Deploying
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
@@ -102,7 +110,8 @@ This endpoint creates a short url, given a long one
 
 Parameters:
 
-- `long_url` - Valid URL
+- **`long_url`** - Valid URL
+- **`code`** - (Optional) custom code for short url. Max length: 9 chars
 
 Example request:
 
@@ -265,3 +274,4 @@ Several things could be added as improvements:
 - **OAuth2 for authentication** - using a client secret with a client id the user could generate a token for requests. That token should be invalidated at some point. Some social auth could be added too
 - **Caching** - Adding a caching layer on top of the api will improve the response time. Varnish cache could be an option.
 - **Nginx for web server** - Nginx could be used for web server, load balancer and reverse proxy to configure the short url host.
+- **Logging** - Add some log handler. Could be [Sentry](https://sentry.io/) for error logs and some other handler for access logs.

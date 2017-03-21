@@ -4,7 +4,7 @@ import hug
 from falcon import HTTP_400, HTTP_409, HTTP_201, HTTP_404, HTTP_500
 
 from db import DB
-from middlewares import ENVMiddleware
+from middlewares import HostEnvMiddleware, MongoMiddleware
 from helpers import clean_url, clean_email, gen_api_key
 
 """
@@ -48,33 +48,65 @@ Auth layer
 """
 
 
-def authenticate_api_key(key):
-    db = DB()
-    user = db.find_one_user({'api_key': key})
+@hug.authentication.authenticator
+def api_key(request, response, verify_user, **kwargs):
+    """API Key Header Authentication
+    The verify_user function passed in to ths authenticator shall receive an
+    API key as input, and return a user object to store in the request context
+    if the request was successful.
+    """
+    api_key = request.get_header('X-Api-Key')
+
+    if api_key:
+        user = verify_user(request)
+        if user:
+            return user
+        else:
+            return False
+    else:
+        return None
+
+
+def verify(request):
+    """
+    auth challenge function
+    """
+    api_key = request.get_header('X-Api-Key')
+    db = request.context['db']
+    user = db.find_one_user({'api_key': api_key})
     if not user:
         return False
     return user
 
 
-api_key_auth = hug.authentication.api_key(authenticate_api_key)
+auth_user = api_key(verify)
+
+
+"""
+Middlewares
+"""
+
+
+api = hug.API(__name__)
+
+# adding host on request.context
+api.http.add_middleware(HostEnvMiddleware())
+
+# adding mongodb connection to request.context
+api.http.add_middleware(MongoMiddleware())
 
 
 """
 API endpoints implementations
 """
 
-api = hug.API(__name__)
 
-# adding environment middleware
-api.http.add_middleware(ENVMiddleware())
-
-
-@hug.get('/api/short', requires=api_key_auth)
+@hug.get('/api/short', requires=auth_user)
 def short_url(request, response):
     """
     Handles url shortening
     """
-    db = DB()
+    db = request.context['db']
     host = request.context['host']
 
     # check long_url param
@@ -89,16 +121,27 @@ def short_url(request, response):
         long_url = clean_url(long_url)
     except ValueError:
         response.status = HTTP_400
-        return {'error': 'long_url URL is not valid'}
+        return {'error': 'long_url is not a valid URL'}
+
+    # validate code
+    code = request.params.get('code')
+    if code and len(code) > DB.MAX_CODE_LEN:
+        response.status = HTTP_400
+        return {'error': 'Code param must have a max length of 9'}
 
     # check if url already exists
-    exists = db.find_one_url({'long_url': long_url})
+    if code:
+        query = db.find_one_url({'code': code})
+    else:
+        query = db.find_one_url({'long_url': long_url})
+
+    exists = db.find_one_url(query)
     if exists:
         response.status = HTTP_409
         return {'error': 'long_url already exists'}
 
     # create url
-    code = db.generate_url_code(host)
+    code = code or db.generate_url_code(host)
     short_url = '{}/{}'.format(host, code)
     url = {
         'short_url': short_url,
@@ -112,41 +155,46 @@ def short_url(request, response):
     db.insert_url(url)
 
     response.status = HTTP_201
-    db.close()
     return {'short_url': short_url}
 
 
-@hug.get('/api/expand', requires=api_key_auth)
+@hug.get('/api/expand', requires=auth_user)
 def expand_url(request, response):
     """
     Handle url expanding. Returns limited url info
     """
-    db = DB()
+    db = request.context['db']
 
     # validating query params
     if 'short_url' not in request.params:
         response.status = HTTP_400
         return {'error': 'short_url GET param missing'}
 
+    # validate url
+    try:
+        short_url = clean_url(request.params['short_url'])
+    except ValueError:
+        response.status = HTTP_400
+        return {'error': 'short_url is not a valid URL'}
+
     # check if url exists
-    url = db.find_one_url({'short_url': request.params['short_url']})
+    url = db.find_one_url({'short_url': short_url})
     if not url:
         response.status = HTTP_404
-        return {'error': 'long_url does not exist'}
+        return {'error': 'short_url does not exist'}
 
-    db.close()
     return {
         'short_url': request.params['short_url'],
         'long_url': url['long_url'],
     }
 
 
-@hug.get('/api/urls', requires=api_key_auth)
+@hug.get('/api/urls', requires=auth_user)
 def get_user_urls(request, response):
     """
     Return user created urls
     """
-    db = DB()
+    db = request.context['db']
     urls = db.find_urls(request.context['user']['_id'])
     serialized = []
     for url in urls:
@@ -165,7 +213,7 @@ def create_user(body, request, response):
     """
     Creates a new user
     """
-    db = DB()
+    db = request.context['db']
     # validate body
     if not body or 'email' not in body:
         response.status = HTTP_400
@@ -196,7 +244,6 @@ def create_user(body, request, response):
         response.status = HTTP_500
         return {'error': 'Error on creating user. Internal Error'}
 
-    db.close()
     return {'api_key': user['api_key']}
 
 
@@ -210,7 +257,7 @@ def go_to(request, response, code):
     """
     HOST/{code} proxy pass
     """
-    db = DB()
+    db = request.context['db']
 
     # checking if url exists
     url = db.find_one_url({'code': code})
@@ -222,6 +269,5 @@ def go_to(request, response, code):
     access = {'date': datetime.datetime.now()}
     db.update_url({'_id': url['_id']}, {'$addToSet': {'url_access': access}})
 
-    db.close()
     # redirecting user to url
     return hug.redirect.permanent(url['long_url'])

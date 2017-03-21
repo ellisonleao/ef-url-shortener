@@ -1,6 +1,5 @@
 import random
 import string
-import os
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
@@ -11,12 +10,24 @@ class DB:
     """
     Small wrapper for mongodb collection calls
     """
-    def __init__(self, **kwargs):
-        mongo_uri = os.environ.get('MONGODB_URI')
+    MAX_CODE_LEN = 9
+
+    def __init__(self, mongo_uri):
         parsed_host = parse_uri(mongo_uri)
 
         self.conn = MongoClient(mongo_uri)
         self.database = parsed_host['database']
+
+    def create_indexes(self):
+        """
+        adding mongo indexes for quick queries, and secure rules for users
+        """
+        db = self.conn[self.database]
+        # email/api must be unique
+        db.users.create_index([('email', 1), ('api_key', 1)], unique=True)
+
+        # adding index on `code` field
+        db.urls.create_index('code', unique=True)
 
     @staticmethod
     def sanitize_query(query):
@@ -54,9 +65,6 @@ class DB:
         wraps pymongo collection.insert_one for urls collection
         """
         query = self.sanitize_query(query)
-        if not query:
-            return None
-
         return self.conn[self.database].urls.insert_one(query)
 
     def update_url(self, query, change):
@@ -70,9 +78,6 @@ class DB:
         wraps pymongo collection.insert_one for users collection
         """
         query = self.sanitize_query(query)
-        if not query:
-            return None
-
         return self.conn[self.database].users.insert_one(query)
 
     def find_one_user(self, query):
@@ -80,9 +85,6 @@ class DB:
         wraps pymongo collection.find_one for users collection
         """
         query = self.sanitize_query(query)
-        if not query:
-            return None
-
         return self.conn[self.database].users.find_one(query)
 
     def generate_url_code(self, host):
@@ -94,13 +96,12 @@ class DB:
         +
         14 host len (including http scheme, dots and slash, eg. http://bit.ly/)
         """
-        max_code_len = 9
         code = ''.join(random.choice(string.ascii_letters) for i in
-                       range(max_code_len))
+                       range(self.MAX_CODE_LEN))
         exists = self.find_one_url({'code': code})
         while exists:
             code = ''.join(random.choice(string.ascii_letters) for i in
-                           range(max_code_len))
+                           range(self.MAX_CODE_LEN))
             exists = self.find_one_url({'code': code})
         return code
 
