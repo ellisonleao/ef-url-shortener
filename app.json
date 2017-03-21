@@ -8,5 +8,6 @@
         "value": "http://ef.me",
         "description": "Short URL Host"
     }
-  }
+  },
+  "addons": ["mongolab"]
 }
