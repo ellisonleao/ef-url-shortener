@@ -66,6 +66,9 @@ make test
 
 ## Deploying
 
+
+You can deploy directly on Heroku by clicking below
+
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 
