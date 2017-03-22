@@ -4,42 +4,46 @@ import hug
 from falcon import HTTP_400, HTTP_409, HTTP_201, HTTP_404, HTTP_500
 
 from db import DB
+from bson.objectid import ObjectId
 from middlewares import HostEnvMiddleware, MongoMiddleware
-from helpers import clean_url, clean_email, gen_api_key
+from helpers import clean_url, clean_email, gen_api_key, serialize_url
 
 """
 EF URL SHORTENER API
 ~~~~~~~~~~~~~~~~~~~~
 
-routes:
-    GET /api/short
-        - params: long_url=x - requires api_token
-    GET /api/expand?short_url=x - requires api_token
-    GET /api/info?short_url=x- requires api_token
-    GET /api/urls/- requires api_token
-    POST /api/user/ - create user
-    GET /s/:code - redirect to long_url
+Routes
+------
 
-schemas:
+    GET  /api/short?long_url=URL
+    GET  /api/expand?short_url=URL
+    GET  /api/urls/{code}
+    GET  /api/urls/
+    POST /api/user/
+    GET  /s/:code
+
+
+Schemas
+-------
     - url
-    {
-        'user_id': 'some_user_id',
-        'short_url': 'some_url',
-        'long_url': 'long_url_version',
-        'code': 'short_url code',
-        'created_at': 'timestamp',
-        'created_by': 'user_id',
-        'url_access': [
-            {'date': 'timestamp'},
-            ...
-        ]
-    }
+        {
+            'user_id': 'some_user_id',
+            'short_url': 'some_url',
+            'long_url': 'long_url_version',
+            'code': 'short_url code',
+            'created_at': 'timestamp',
+            'created_by': 'user_id',
+            'url_access': [
+                {'date': 'timestamp'},
+                ...
+            ]
+        }
 
     - user
-    {
-        'email': 'some@email.com',
-        'api_key': 'api_key'
-    }
+        {
+            'email': 'some@email.com',
+            'api_key': 'api_key'
+        }
 
 """
 
@@ -57,14 +61,9 @@ def api_key(request, response, verify_user, **kwargs):
     """
     api_key = request.get_header('X-Api-Key')
 
-    if api_key:
-        user = verify_user(request)
-        if user:
-            return user
-        else:
-            return False
-    else:
+    if not api_key:
         return None
+    return verify_user(request)
 
 
 def verify(request):
@@ -107,6 +106,7 @@ def short_url(request, response):
     Handles url shortening
     """
     db = request.context['db']
+    user = request.context['user']
     host = request.context['host']
 
     # check long_url param
@@ -131,9 +131,11 @@ def short_url(request, response):
 
     # check if url already exists
     if code:
-        query = db.find_one_url({'code': code})
+        query = db.find_one_url({'code': code,
+                                 'created_by': ObjectId(user['_id'])})
     else:
-        query = db.find_one_url({'long_url': long_url})
+        query = db.find_one_url({'long_url': long_url,
+                                 'created_by': ObjectId(user['_id'])})
 
     exists = db.find_one_url(query)
     if exists:
@@ -149,7 +151,7 @@ def short_url(request, response):
         'code': code,
         'url_access': [],
         'created_at': datetime.datetime.now(),
-        'created_by': request.context['user']['_id'],
+        'created_by': ObjectId(user['_id']),
     }
 
     db.insert_url(url)
@@ -164,6 +166,7 @@ def expand_url(request, response):
     Handle url expanding. Returns limited url info
     """
     db = request.context['db']
+    user = request.context['user']
 
     # validating query params
     if 'short_url' not in request.params:
@@ -178,7 +181,8 @@ def expand_url(request, response):
         return {'error': 'short_url is not a valid URL'}
 
     # check if url exists
-    url = db.find_one_url({'short_url': short_url})
+    url = db.find_one_url({'short_url': short_url,
+                           'created_by': ObjectId(user['_id'])})
     if not url:
         response.status = HTTP_404
         return {'error': 'short_url does not exist'}
@@ -195,17 +199,35 @@ def get_user_urls(request, response):
     Return user created urls
     """
     db = request.context['db']
-    urls = db.find_urls(request.context['user']['_id'])
+    try:
+        page = int(request.params.get('page', 1))
+    except ValueError:
+        response.status = HTTP_400
+        return {'error': 'page GET param is not valid'}
+
+    urls = db.find_urls(request.context['user']['_id'], page=page)
     serialized = []
     for url in urls:
-        serialized.append({
-            'long_url': url['long_url'],
-            'short_url': url['short_url'],
-            'url_access': url['url_access'],
-            'total_accesses': len(url['url_access']),
-        })
+        serialized.append(serialize_url(url))
 
     return serialized
+
+
+@hug.get('/api/urls/{code}', requires=auth_user)
+def get_user_url(request, response, code):
+    """
+    return user url by code
+    """
+    db = request.context['db']
+    url = db.find_one_url({
+        'code': code,
+        'created_by': ObjectId(request.context['user']['_id'])
+    })
+    if not url:
+        response.status = HTTP_404
+        return {'error': 'URL does not exist'}
+
+    return serialize_url(url)
 
 
 @hug.post('/api/user')

@@ -74,7 +74,7 @@ make test
 - All API requests must pass a `X-Api-Key` header with the generated api key for the user.
 - All API requests must use `application/json` as payload content-type on post requests
 
-### POST /api/user
+## `POST /api/user`
 
 **Add user**
 
@@ -102,7 +102,7 @@ content-type: application/json
 }
 ```
 
-### GET /api/short
+## `GET /api/short`
 
 **Short url**
 
@@ -116,7 +116,7 @@ Parameters:
 Example request:
 
 ```bash
-curl http://host/api/short?long_url=http://google.com
+curl http://host/api/short?long_url=http://google.com -H 'X-Api-Key: userapikey'
 ```
 
 Example response
@@ -140,7 +140,7 @@ Other responses:
 - `401` - Unauthorized request
 
 
-### GET /api/expand
+## `GET /api/expand`
 
 **Expand url**
 
@@ -153,7 +153,7 @@ Parameters:
 Example request:
 
 ```bash
-curl http://host/api/expand?short_url=http://host/code
+curl http://host/api/expand?short_url=http://host/code -H 'X-Api-Key: userapikey'
 ```
 
 Example response
@@ -177,12 +177,12 @@ Other responses:
 - `400` - Bad request
 - `401` - Unauthorized request
 
-### GET /api/urls
+
+## `GET /api/urls`
 
 **User urls**
 
 This endpoint returns a list of urls for a determinated user.
-
 
 Parameters:
 
@@ -191,7 +191,7 @@ Parameters:
 Example request:
 
 ```bash
-curl http://host/api/user
+curl http://host/api/user?page=2 -H 'X-Api-Key: userapikey'
 ```
 
 Example response
@@ -242,7 +242,46 @@ Other responses:
 
 - `401` - Unauthorized request
 
-## GET /s/:code
+
+## `GET /api/urls/:code`
+
+**Return a user url by code**
+
+This endpoint returns a single url information.
+
+Example request:
+
+```bash
+curl http://host/api/urls/code -H 'X-Api-Key: userapitoken'
+```
+
+Example response:
+
+```
+HTTP/1.0 200 OK
+Date: GMT Datetime
+Server: Some web server
+content-length: 179
+content-type: application/json
+
+{
+    "code": "sDzlSqcTh",
+    "created_at": "2017-03-21T20:37:57.190000",
+    "long_url": "http://www.g1.com.br",
+    "short_url": "http://ef.me/sDzlSqcTh",
+    "total_accesses": 0,
+    "url_access": []
+}
+```
+
+Other responses:
+
+- `404` - url not found
+- `400` - Bad request
+- `401` - Unauthorized request
+
+
+## `GET /s/:code`
 
 **Short url redirect**
 
@@ -270,7 +309,6 @@ location: http://some.longurl
 
 Several things could be added as improvements:
 
-- **Pagination** - List of urls can have pagination for better response time and scalability.
 - **OAuth2 for authentication** - using a client secret with a client id the user could generate a token for requests. That token should be invalidated at some point. Some social auth could be added too
 - **Caching** - Adding a caching layer on top of the api will improve the response time. Varnish cache could be an option.
 - **Nginx for web server** - Nginx could be used for web server, load balancer and reverse proxy to configure the short url host.

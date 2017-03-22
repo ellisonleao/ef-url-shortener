@@ -3,6 +3,7 @@ import string
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
 
@@ -11,6 +12,7 @@ class DB:
     Small wrapper for mongodb collection calls
     """
     MAX_CODE_LEN = 9
+    PAGE_SIZE = 5
 
     def __init__(self, mongo_uri):
         parsed_host = parse_uri(mongo_uri)
@@ -24,10 +26,18 @@ class DB:
         """
         db = self.conn[self.database]
         # email/api must be unique
-        db.users.create_index([('email', 1), ('api_key', 1)], unique=True)
+        try:
+            db.users.create_index([('email', 1), ('api_key', 1)], unique=True)
+        except OperationFailure: # pragma: no cover
+            # index already exists
+            pass
 
         # adding index on `code` field
-        db.urls.create_index('code', unique=True)
+        try:
+            db.urls.create_index('code', unique=True)
+        except OperationFailure: # pragma: no cover
+            # index already exists
+            pass
 
     @staticmethod
     def sanitize_query(query):
@@ -54,11 +64,15 @@ class DB:
         res = self.conn[self.database].urls.find_one(query)
         return res
 
-    def find_urls(self, user_id):
+    def find_urls(self, user_id, page=1):
         """
-        Returns a list of user urls
+        Returns a list of user urls, paginated
         """
-        return self.conn[self.database].urls.find({'created_by': ObjectId(user_id)})
+        db = self.conn[self.database]
+        skip = (page - 1) * self.PAGE_SIZE
+        return db.urls.find(
+            {'created_by': ObjectId(user_id)}
+        ).skip(skip).limit(self.PAGE_SIZE).sort('created_at', -1)
 
     def insert_url(self, query):
         """

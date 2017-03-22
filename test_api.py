@@ -2,6 +2,7 @@ from collections import namedtuple
 import os
 # from unittest.mock import patch
 import datetime
+import random
 
 import pytest
 import hug
@@ -106,7 +107,8 @@ def test_short_url():
 
     # bad request with invalid url
     headers = {'X-Api-Key': 'apikey1'}
-    response = hug.test.get(api, request_url, headers=headers, long_url=(1,2,3))
+    response = hug.test.get(api, request_url, headers=headers,
+                            long_url=(1, 2, 3))
     assert response.data['error'] == 'long_url is not a valid URL'
 
     # bad request with long code
@@ -156,7 +158,8 @@ def test_expand_url():
     # bad request with a not valid url
     request_url = '/api/expand'
     headers = {'X-Api-Key': 'apikey1'}
-    response = hug.test.get(api, request_url, headers=headers, short_url=(1,2,3))
+    response = hug.test.get(api, request_url, headers=headers,
+                            short_url=(1, 2, 3))
     assert response.data['error'] == 'short_url is not a valid URL'
 
     # bad request with a inexistent url
@@ -170,10 +173,9 @@ def test_expand_url():
     request_url = '/api/expand'
     headers = {'X-Api-Key': 'apikey1'}
     response = hug.test.get(api, request_url, headers=headers,
-                            short_url='http://ef.me/user1')
-
-    assert response.data['short_url'] == 'http://ef.me/user1'
-    assert response.data['long_url'] == 'http://user1.com'
+                            short_url='http://ef.me/user0')
+    assert response.data['short_url'] == 'http://ef.me/user0'
+    assert response.data['long_url'] == 'http://user0.com'
 
     teardown()
 
@@ -244,6 +246,7 @@ def test_get_user_urls():
     assert len(response) == 1
     assert response[0]['short_url'] == 'http://ef.me/user0'
     assert response[0]['long_url'] == 'http://user0.com'
+    assert response[0]['code'] == 'user0'
     assert response[0]['total_accesses'] == 0
 
     # add one more access to url on user0 and check the results
@@ -252,6 +255,51 @@ def test_get_user_urls():
 
     assert len(response) == 1
     assert response[0]['total_accesses'] == 1
+
+    # test pagination
+    # adding more urls for user0 and retrieve it
+    for i in range(10):
+        code = random.randint(4, 99999)
+        resp = hug.test.get(api, '/api/short', headers=headers,
+                            long_url='http://{}.com'.format(code))
+        assert resp.status == '201 Created'
+
+    response = hug.test.get(api, '/api/urls', headers=headers).data
+    assert len(response) == 5
+
+    # get page 2
+    response = hug.test.get(api, '/api/urls', headers=headers, page=2).data
+    assert len(response) == 5
+
+    # get page 3. Should have 1 url only
+    response = hug.test.get(api, '/api/urls', headers=headers, page=3).data
+    assert len(response) == 1
+
+    teardown()
+
+
+def test_get_user_url():
+    """
+    test /api/urls/{code} endpoint
+    """
+    setup()
+    import api
+
+    # bad request without auth
+    response = hug.test.get(api, '/api/urls/123')
+    assert response.status == '401 Unauthorized'
+
+    # good request with user url
+    headers = {'X-Api-Key': 'apikey1'}
+    response = hug.test.get(api, '/api/urls/user0', headers=headers)
+    assert response.data['short_url'] == 'http://ef.me/user0'
+    assert response.data['long_url'] == 'http://user0.com'
+    assert response.data['total_accesses'] == 0
+
+    # get url from other user returns 404
+    headers = {'X-Api-Key': 'apikey1'}
+    response = hug.test.get(api, '/api/urls/user1', headers=headers)
+    assert response.data['error'] == 'URL does not exist'
 
     teardown()
 

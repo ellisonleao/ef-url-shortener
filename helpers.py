@@ -64,3 +64,17 @@ def gen_api_key(email):  # pragma: no cover
     """
     salt = str(os.urandom(64)).encode('utf-8')
     return hash_password(email, salt)
+
+
+def serialize_url(url):
+    """
+    Serialize url for output
+    """
+    return {
+        'long_url': url['long_url'],
+        'short_url': url['short_url'],
+        'code': url['code'],
+        'url_access': url['url_access'],
+        'total_accesses': len(url['url_access']),
+        'created_at': url['created_at']
+    }
