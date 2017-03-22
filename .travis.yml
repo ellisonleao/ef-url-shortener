@@ -1,0 +1,18 @@
+language: python
+python:
+- '3.4'
+- '3.5'
+- '3.6'
+before_install:
+- pip install -r requirements.txt
+- pip install coveralls
+script:
+- make test
+after_success: coveralls
+notifications:
+  email:
+    recipients:
+    - ellisonleao@gmail.com
+env:
+  global:
+    secure: XUxvQoHwPBDdAOTcEnW+Wgry9pQg2lFqA7FxOzYt0A9ZqZMby6VCahl5X99FgnCB0Y6G4eix7YS2MrKyfFOFVQ4Do9R9hOHCz+w3cUPfPWHLjpOULTR7AWY4Qzf+NRxJBH7YQub/aEaXNofArVNfqOLLzyM/FDTzBNDf1K3qCjsaJ2zFgW+zG4Y5VASMNG6I79X0O5gc4haN3ghjUsTxLiFeVuE8zi8G9whcS55PnQWGDNVTXyCL31wpZTuCneuq4j76zTQsWWdmW25iqhcPayGDTIuOAi/4YtbOkr9wZfm8E5FydpEbnJzk9C8olDo+Nw0XL9RUg2JhPcZgCqorcPj2G2pF7gm3vVJ92VBRaJjk+znu0nJ3SabfB3RcKgwiGvn6mBdlW8W7gqE6VQndZZPLF3UFbh5gmb62Xum1R+4twx+KXL1kuNe9rI/QWCsywW+JGh3yZzABC54Dlh+QKyF1lJNcT5YJU8myncHqxKpKTqzN10Fqy1WbJtM9TPbabt3BtdKu6vBoYVVQuY/9X+50pWy75Aa1GJmCRJjBdffpKO8M8ISCoXCB1L2blBAln7Pfp0VeDVFAR4rK457ZT2d6E3PHw+5bmyG0lJDI7kq+KI2j2zgwnkSQHFRrBLjuc1Sj6yRPEVCIs72/BhtUf5EDJBxWjL9e7CBMnNsFgRc=
