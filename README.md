@@ -2,7 +2,6 @@ EF URL Shortener
 ================
 
 [![Build Status](https://travis-ci.org/ellisonleao/ef-url-shortener.svg?branch=master)](https://travis-ci.org/ellisonleao/ef-url-shortener)
-
 [![Coverage Status](https://coveralls.io/repos/github/ellisonleao/ef-url-shortener/badge.svg)](https://coveralls.io/github/ellisonleao/ef-url-shortener)
 
 A URL Shortening microservice API
@@ -323,4 +322,5 @@ Several things could be added as improvements for scalability and security:
 - **Caching** - Adding a caching layer on top of the api will improve the response time. Varnish cache could be an option.
 - **Nginx** - Nginx could be used for web server, load balancer and reverse proxy to configure the short url host. Currently the service is running with gunicorn+meinheld , but we could configure to use with uwsgi or other wsgi handler.
 - **Logging** - Add some log handler. Could be [Sentry](https://sentry.io/) for error logs and some other handler for access logs.
+- **Mocks on tests** - Right now the tests are using a real mongodb connection. Optimal way is to mock the db connection and other db operations.
 
